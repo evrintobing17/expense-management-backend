@@ -77,12 +77,14 @@ func main() {
 
 	managerRouter.HandleFunc("/expenses/{id}/approve", expenseHandler.ApproveExpense).Methods("PUT")
 	managerRouter.HandleFunc("/expenses/{id}/reject", expenseHandler.RejectExpense).Methods("PUT")
-	managerRouter.HandleFunc("/expenses/pending", expenseHandler.GetPendingApproval).Methods("GET")
+	managerRouter.HandleFunc("/expenses-pending", expenseHandler.GetPendingApproval).Methods("GET")
+
+	handler := middleware.CORS(router)
 
 	// Start server
 	server := &http.Server{
 		Addr:         ":" + cfg.ServerPort,
-		Handler:      router,
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
