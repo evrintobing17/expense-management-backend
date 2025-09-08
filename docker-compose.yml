@@ -17,7 +17,9 @@ services:
       retries: 10
 
   app:
-    build: .
+    build: 
+      context: .
+      dockerfile: dockerfile
     ports:
       - "8080:8080"
     environment:
@@ -33,13 +35,41 @@ services:
       postgres:
         condition: service_healthy
     command: >
-      sh -c "
+       sh -c "
         echo 'Waiting for PostgreSQL to be ready...'
         while ! nc -z postgres 5432; do
           sleep 1
         done
         echo 'PostgreSQL is ready'
-        ./api
+        echo 'Running migrations...'
+        migrate
+        echo 'Starting API server...'
+        api"
+
+  worker:
+    build:
+      context: .
+      dockerfile: dockerfile.worker
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: expense_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      PAYMENT_API_URL: https://1620e98f-7759-431c-a2aa-f449d591150b.mock.pstmn.io
+      WORKER_INTERVAL: 30
+    depends_on:
+      - postgres
+      - app
+    command: >
+      sh -c "
+        echo 'Waiting for backend to be ready...'
+        while ! nc -z app 8080; do
+          sleep 1
+        done
+        echo 'Backend is ready'
+        echo 'Starting payment worker...'
+        worker
       "
 
 volumes:
