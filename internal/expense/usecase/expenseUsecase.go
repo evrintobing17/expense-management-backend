@@ -22,12 +22,10 @@ func NewExpenseUseCase(expenseRepo expense.ExpenseRepository, approvalRepo appro
 }
 
 func (uc *expenseUseCase) CreateExpense(ctx context.Context, userID int, amountIDR int, description, receiptURL string) (*domain.Expense, error) {
-	// Validate amount
 	if amountIDR < domain.MinExpenseAmount || amountIDR > domain.MaxExpenseAmount {
 		return nil, domain.ErrInvalidAmount
 	}
 
-	// Validate required fields
 	if description == "" {
 		return nil, domain.ErrMissingDescription
 	}
@@ -56,10 +54,6 @@ func (uc *expenseUseCase) GetExpenseByID(ctx context.Context, id int, userID int
 	if expense == nil {
 		return nil, domain.ErrExpenseNotFound
 	}
-
-	// Users can only view their own expenses (except managers)
-	// This check should be done at the handler level with proper authorization
-	// but we include it here for additional security
 
 	return expense, nil
 }
@@ -105,7 +99,6 @@ func (uc *expenseUseCase) ApproveExpense(ctx context.Context, expenseID int, app
 		return err
 	}
 
-	// Update expense status
 	now := time.Now()
 	return uc.expenseRepo.UpdateStatus(ctx, expenseID, domain.ExpenseStatusApproved, &now)
 }
@@ -137,7 +130,6 @@ func (uc *expenseUseCase) RejectExpense(ctx context.Context, expenseID int, appr
 		return err
 	}
 
-	// Update expense status
 	now := time.Now()
 	return uc.expenseRepo.UpdateStatus(ctx, expenseID, domain.ExpenseStatusRejected, &now)
 }

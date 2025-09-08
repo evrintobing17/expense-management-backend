@@ -3,7 +3,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/evrintobing17/expense-management-backend/internal/domain"
@@ -25,7 +27,6 @@ func (r *expenseRepository) Create(ctx context.Context, expense *domain.Expense)
 		RETURNING id, submitted_at
 	`
 
-	// Determine initial status and approval requirements
 	requiresApproval := expense.AmountIDR >= domain.ApprovalThreshold
 	autoApproved := !requiresApproval
 	initialStatus := domain.ExpenseStatusPending
@@ -167,6 +168,55 @@ func (r *expenseRepository) FindPendingApproval(ctx context.Context) ([]*domain.
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, domain.ExpenseStatusAwaitingApproval)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var expenses []*domain.Expense
+	for rows.Next() {
+		expense := &domain.Expense{}
+		err := rows.Scan(
+			&expense.ID,
+			&expense.UserID,
+			&expense.AmountIDR,
+			&expense.Description,
+			&expense.ReceiptURL,
+			&expense.Status,
+			&expense.SubmittedAt,
+			&expense.ProcessedAt,
+			&expense.RequiresApproval,
+			&expense.AutoApproved,
+		)
+		if err != nil {
+			return nil, err
+		}
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
+}
+
+func (r *expenseRepository) FindByStatus(ctx context.Context, statuses ...domain.ExpenseStatus) ([]*domain.Expense, error) {
+	if len(statuses) == 0 {
+		return nil, fmt.Errorf("at least one status must be provided")
+	}
+
+	query := `
+		SELECT id, user_id, amount_idr, description, receipt_url, status, submitted_at, processed_at, requires_approval, auto_approved
+		FROM expenses
+		WHERE status IN (`
+
+	// Create placeholders for each status
+	placeholders := make([]string, len(statuses))
+	args := make([]interface{}, len(statuses))
+	for i, status := range statuses {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = status
+	}
+	query += strings.Join(placeholders, ", ") + ")"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: expense_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: expense_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: your-jwt-secret-key-change-in-production
+      SERVER_PORT: 8080
+      PAYMENT_API_URL: https://1620e98f-7759-431c-a2aa-f449d591150b.mock.pstmn.io
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for PostgreSQL to be ready...'
+        while ! nc -z postgres 5432; do
+          sleep 1
+        done
+        echo 'PostgreSQL is ready'
+        ./api
+      "
+
+volumes:
+  postgres_data:
