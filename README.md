@@ -17,16 +17,12 @@ A backend system for managing employee expenses with approval workflows and paym
 1. Clone the repository
 2. Copy `.env.example` to `.env` and configure your environment variables
 3. Run `docker-compose up -d` to start the database
-4. Run `make migrate` to run database migrations
-5. Run `make api` to start the API server
-6. Run `make worker` to start the payment worker
 
 ## API Documentation
 
 ### Authentication
 
 - `POST /api/auth/login` - Login with email and password
-- `POST /api/auth/register` - Register a new user
 
 ### Expenses
 
@@ -53,16 +49,3 @@ A backend system for managing employee expenses with approval workflows and paym
 - Approval threshold: IDR 1,000,000
 - Expenses below threshold are auto-approved
 - Expenses above threshold require manager approval
-
-## Database Migrations
-
-### Running Migrations
-
-To run database migrations:
-
-```bash
-# Using Docker Compose
-docker-compose run --rm migrate
-
-# Using Go directly
-go run cmd/migrate/main.go
