@@ -42,7 +42,7 @@ services:
         done
         echo 'PostgreSQL is ready'
         echo 'Running migrations...'
-        migrate
+        migration
         echo 'Starting API server...'
         api"
 
