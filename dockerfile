@@ -41,4 +41,4 @@ EXPOSE 8080
 ENTRYPOINT ["dumb-init", "--"]
 
 # Run migrations then start API
-CMD ["sh", "-c", "migrate && api"]
+CMD ["sh", "-c", "migration && api"]
