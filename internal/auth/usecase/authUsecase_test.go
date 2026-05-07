@@ -2,42 +2,48 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/evrintobing17/expense-management-backend/internal/domain"
 	"github.com/evrintobing17/expense-management-backend/mocks"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
+	"github.com/stretchr/testify/require"
 )
 
-type Suite struct {
-	suite.Suite
-}
-
-func TestInitUseCase(t *testing.T) {
-	suite.Run(t, new(Suite))
-}
-
-func (s *Suite) TestCreateExpense() {
+func TestLogin(t *testing.T) {
 	ctx := context.Background()
-
-	mockAuth := new(mocks.AuthService)
-
-	usecase := NewAuthUseCase(mockAuth)
-
-	s.T().Run("success CreateExpense", func(t *testing.T) {
-		userResponse := &domain.User{
+	t.Run("success", func(t *testing.T) {
+		mockAuth := new(mocks.AuthService)
+		uc := NewAuthUseCase(mockAuth)
+		user := &domain.User{
 			ID:    1,
 			Email: "test@example.com",
 			Name:  "manager",
 			Role:  "manager",
 		}
-		mockAuth.On("Login", mock.Anything, mock.Anything, mock.Anything).Return("some token", userResponse, nil).Once()
+		mockAuth.On("Login", mock.Anything, "TEST@example.com", "PWD").Return("some token", user, nil).Once()
 
-		token, result, err := usecase.Login(ctx, "TEST@example.com", "PWD")
-		s.Nil(err)
-		s.NotNil(result)
-		s.NotNil(token)
+		token, result, err := uc.Login(ctx, "TEST@example.com", "PWD")
+		require.NoError(t, err)
+		require.Equal(t, "some token", token)
+		require.Equal(t, &domain.UserResponse{
+			ID:    1,
+			Email: "test@example.com",
+			Name:  "manager",
+			Role:  "manager",
+		}, result)
 	})
 
+	t.Run("auth service error", func(t *testing.T) {
+		mockAuth := new(mocks.AuthService)
+		uc := NewAuthUseCase(mockAuth)
+		expectedErr := errors.New("invalid credentials")
+		mockAuth.On("Login", mock.Anything, "test@example.com", "wrong").Return("", (*domain.User)(nil), expectedErr).Once()
+
+		token, result, err := uc.Login(ctx, "test@example.com", "wrong")
+		require.ErrorIs(t, err, expectedErr)
+		require.Empty(t, token)
+		require.Nil(t, result)
+	})
 }

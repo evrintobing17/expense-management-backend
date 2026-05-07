@@ -55,6 +55,10 @@ func (uc *expenseUseCase) GetExpenseByID(ctx context.Context, id int, userID int
 		return nil, domain.ErrExpenseNotFound
 	}
 
+	if expense.UserID != userID {
+		return nil, domain.ErrUnauthorizedAction
+	}
+
 	return expense, nil
 }
 
@@ -73,37 +77,21 @@ func (uc *expenseUseCase) GetUserExpenses(ctx context.Context, userID int, statu
 }
 
 func (uc *expenseUseCase) ApproveExpense(ctx context.Context, expenseID int, approverID int, notes string) error {
-	expense, err := uc.expenseRepo.FindByID(ctx, expenseID)
-	if err != nil {
-		return err
-	}
-
-	if expense == nil {
-		return domain.ErrExpenseNotFound
-	}
-
-	if expense.Status != domain.ExpenseStatusAwaitingApproval {
-		return domain.ErrInvalidExpenseStatus
-	}
-
-	// Create approval record
-	approval := &domain.Approval{
-		ExpenseID:  expenseID,
-		ApproverID: approverID,
-		Status:     domain.ApprovalStatusApproved,
-		Notes:      notes,
-	}
-
-	err = uc.approvalRepo.Create(ctx, approval)
-	if err != nil {
-		return err
-	}
-
-	now := time.Now()
-	return uc.expenseRepo.UpdateStatus(ctx, expenseID, domain.ExpenseStatusApproved, &now)
+	return uc.processExpenseApproval(ctx, expenseID, approverID, notes, domain.ApprovalStatusApproved, domain.ExpenseStatusApproved)
 }
 
 func (uc *expenseUseCase) RejectExpense(ctx context.Context, expenseID int, approverID int, notes string) error {
+	return uc.processExpenseApproval(ctx, expenseID, approverID, notes, domain.ApprovalStatusRejected, domain.ExpenseStatusRejected)
+}
+
+func (uc *expenseUseCase) processExpenseApproval(
+	ctx context.Context,
+	expenseID int,
+	approverID int,
+	notes string,
+	approvalStatus domain.ApprovalStatus,
+	expenseStatus domain.ExpenseStatus,
+) error {
 	expense, err := uc.expenseRepo.FindByID(ctx, expenseID)
 	if err != nil {
 		return err
@@ -121,7 +109,7 @@ func (uc *expenseUseCase) RejectExpense(ctx context.Context, expenseID int, appr
 	approval := &domain.Approval{
 		ExpenseID:  expenseID,
 		ApproverID: approverID,
-		Status:     domain.ApprovalStatusRejected,
+		Status:     approvalStatus,
 		Notes:      notes,
 	}
 
@@ -131,7 +119,7 @@ func (uc *expenseUseCase) RejectExpense(ctx context.Context, expenseID int, appr
 	}
 
 	now := time.Now()
-	return uc.expenseRepo.UpdateStatus(ctx, expenseID, domain.ExpenseStatusRejected, &now)
+	return uc.expenseRepo.UpdateStatus(ctx, expenseID, expenseStatus, &now)
 }
 
 func (uc *expenseUseCase) GetPendingApproval(ctx context.Context) ([]*domain.Expense, error) {
